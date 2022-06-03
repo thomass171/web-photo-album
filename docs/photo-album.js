@@ -186,6 +186,9 @@ function addScanPreview(albumElement, index) {
     $("#" + htmlImage.id).attr('title', tooltip);
 }
 
+/**
+ * Add an image to an album chapter.
+ */
 function addAlbumImage(albumElement, targetCell) {
 
     var albumDimension = getDimension(albumElement.dimension, ALBUM);
@@ -237,9 +240,9 @@ function registerImage(imageName) {
 }
 
 /**
- *
+ * Add a chapter of an album.
  */
-function addChapterElement(chapter, imageObjectURL) {
+function addChapter(chapter, imageObjectURL) {
 
     var chapterid = "chapter_" + getUniqueId() + "_i";
     //console.log("Adding chapter element " + chapter.label + " with id " + chapterid);
@@ -259,8 +262,6 @@ function addChapterElement(chapter, imageObjectURL) {
         addAlbumImage(albumElement, chapterid + idx);
         idx++;
     });
-
-
 }
 
 /**
@@ -326,7 +327,8 @@ function scanContent(url) {
         // build grid like https://www.w3schools.com/w3css/w3css_grid.asp
         var scanGrid = buildW3Grid(data.length, 6, "w3-row-padding w3-margin-top", "w3-col m2", "previewcell");
         $("#scanpreview").append(scanGrid.html);
-        //data = data.slice(0,36)
+        // optionally limit the number of files for better performance during development
+        data = data.slice(0,72)
         data.forEach(element => { if (isImage(element)) {
             //loadImage(url, element, addScanPreview);
             loadImage(url, element);
@@ -399,6 +401,17 @@ function buildAlbumDefinitionFromScanResult() {
             chapter.label = ldt.getWeekday();
             chapter.label += ", " + ldt.getUserDate();
         }
+        // sort images in chapter by timestamp
+        imagesPerDayMap.get(key).sort(function(a, b) {
+            var at, bt;
+            if ((at = allImagesMap.get(a).localDateTime) == null) {
+                return -1;
+            }
+            if ((bt = allImagesMap.get(b).localDateTime) == null) {
+                return 1;
+            }
+            return at.isBefore(bt) ? -1 : 1;
+        });
         chapter.images = imagesPerDayMap.get(key);
         //console.log("chapter imgages of "+key+":",chapter.images);
         albumDefinition.chapter.push(chapter);
@@ -408,7 +421,7 @@ function buildAlbumDefinitionFromScanResult() {
 
 function showAlbumByDefinition(albumDefinition) {
     albumDefinition.chapter.forEach(chapter => {
-        addChapterElement(chapter);
+        addChapter(chapter);
     });
 }
 
