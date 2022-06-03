@@ -1,0 +1,18 @@
+#IntelliJ Idea
+.idea/
+out/
+local.properties
+*.iml
+*.iws
+*.ipr
+
+#Gradle
+.gradletasknamecache
+.gradle/
+
+# Logs
+*.log
+log/
+logs/
+
+.DS_Store
