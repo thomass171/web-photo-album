@@ -10,8 +10,11 @@ var scanResult = {};
 
 var THUMBNAIL = 0;
 var ALBUM = 1;
+var FULLSCREEN = 2;
 
 var ALBUM_IMAGE_STYLE = "";
+
+var fullscreenImageId;
 
 // order of dimensions is 4:3, 3:4
 var dimensions = [
@@ -20,7 +23,10 @@ var dimensions = [
     { width: 75, height: 100 }],
     // album
     [{ width: 300, height: 225 },
-    { width: 225, height: 300 }]
+    { width: 225, height: 300 }],
+    // fullscreen
+    [{ width: 1024, height: 768 },
+    { width: 768, height: 1024 }]
 ];
 
 class AlbumElement {
@@ -45,6 +51,10 @@ class AlbumElement {
         } else {
             return this.localDateTime.getDateString();
         }
+    }
+
+    isPortrait() {
+        return this.height > this.width;
     }
 }
 
@@ -200,6 +210,9 @@ function addAlbumImage(albumElement, targetCell) {
     var htmlImage = createImage("max-width: 100%; height: auto");
     $("#" + targetCell).append(htmlImage.html);
     $("#" + htmlImage.id).attr("src", dataurl);
+    $("#" + htmlImage.id).click(function() {
+        switchView("fullview", albumElement.fileName);
+    });
 
     var tooltip = "" + albumElement.fileName + ": "+ albumElement.dimension;
     $("#" + htmlImage.id).attr('title', tooltip);
@@ -324,11 +337,12 @@ function scanContent(url) {
         scanResult.totalToScan = data.length;
         scanResult.scanned = 0;
         scanResult.failed = 0;
+        scanResult.subdir = substringAfterLast(url, "/");
         // build grid like https://www.w3schools.com/w3css/w3css_grid.asp
         var scanGrid = buildW3Grid(data.length, 6, "w3-row-padding w3-margin-top", "w3-col m2", "previewcell");
         $("#scanpreview").append(scanGrid.html);
         // optionally limit the number of files for better performance during development
-        data = data.slice(0,72)
+        //data = data.slice(0,72)
         data.forEach(element => { if (isImage(element)) {
             //loadImage(url, element, addScanPreview);
             loadImage(url, element);
@@ -338,9 +352,9 @@ function scanContent(url) {
 }
 
 
-function switchView(view) {
+function switchView(view, imageName) {
     //console.log("switchView to ", view);
-    ['scanview', 'detailview', 'listview', 'albumview'].forEach(v => {
+    ['scanview', 'detailview', 'listview', 'albumview', 'fullview'].forEach(v => {
         $('#'+v).removeClass('w3-show');
         $('#'+v).addClass('w3-hide');
     });
@@ -359,8 +373,69 @@ function switchView(view) {
          $('#scanview').removeClass('w3-hide');
          $('#scanview').addClass('w3-show');
     }
+    if (view == "fullview") {
+
+        console.log("fullscreen for ", imageName)
+        var albumElement = allImagesMap.get(imageName);
+
+        // not sure about the best solution for having image completey on screen
+        var fixSize = false;
+        var dataurl = null;
+        if (fixSize) {
+            var fullscreenDimension = getDimension(albumElement.dimension, FULLSCREEN);
+
+            dataurl = createDataUrlFromCanvas(fullscreenDimension.width, fullscreenDimension.height, ctx => {
+                ctx.drawImage(albumElement.getHtmlImage(), 0, 0, fullscreenDimension.width, fullscreenDimension.height);
+            });
+        } else {
+            console.log("albumElement.getHtmlImage()",albumElement.getHtmlImage())
+            dataurl = albumElement.getHtmlImage().src;
+        }
+        //console.log("dataurl",dataurl);
+
+        $("#" + fullscreenImageId).remove();
+        //<img id="img_full" style="max-width: 100%; height: auto"/>
+        //var htmlImage = createImage("max-width: 100%; height: auto");
+        var style = "max-width: 100%; height: auto";
+        if (albumElement.isPortrait()) {
+            style = "max-width: 50%; height: auto";
+        }
+        var htmlImage = createImage(style, "w3-image");
+        fullscreenImageId = htmlImage.id;
+        $("#fullscreenContainer").append(htmlImage.html);
+        $("#" + fullscreenImageId).attr("src", dataurl);
+
+        $('#fullview').removeClass('w3-hide');
+        $('#fullview').addClass('w3-show');
+    }
 }
 
+
+/**
+ * Not used currently because not sure about the effects. Not possible to modifiy DOM by jquery in fullscreen?
+ * Let the user switch to full screen.
+ * From https://www.w3schools.com/howto/howto_js_fullscreen.asp
+ */
+function openFullscreen() {
+    $('#fullview').addClass('w3-show');
+    $('#fullview').removeClass('w3-hide');
+    var elem = document.getElementById("fullscreen");
+    if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+    } else if (elem.webkitRequestFullscreen) { /* Safari */
+        elem.webkitRequestFullscreen();
+    } else if (elem.msRequestFullscreen) { /* IE11 */
+        elem.msRequestFullscreen();
+    }
+}
+
+/**
+ * Not used as long as full screen is a user decision.
+ */
+function exitHandlerFullscreen() {
+    console.log("Exiting fullscreen");
+    //$("#" + fullscreenImageId).remove();
+}  
 
 function buildAlbum() {
     var albumDefinition = buildAlbumDefinitionFromScanResult();
@@ -370,6 +445,7 @@ function buildAlbum() {
 function buildAlbumDefinitionFromScanResult() {
     var albumDefinition = {};
     albumDefinition.chapter = [];
+    albumDefinition.title = scanResult.subdir;
 
     console.log("Building album for " + allImagesMap.size + " images.")
 
@@ -420,6 +496,7 @@ function buildAlbumDefinitionFromScanResult() {
 }
 
 function showAlbumByDefinition(albumDefinition) {
+    $("#album_title").html(albumDefinition.title);
     albumDefinition.chapter.forEach(chapter => {
         addChapter(chapter);
     });
@@ -446,5 +523,10 @@ function init() {
     scanContent(host)
 
     switchView("scanview");
+
+    document.addEventListener('fullscreenchange', exitHandlerFullscreen);
+    document.addEventListener('webkitfullscreenchange', exitHandlerFullscreen);
+    document.addEventListener('mozfullscreenchange', exitHandlerFullscreen);
+    document.addEventListener('MSFullscreenChange', exitHandlerFullscreen);
 }
 

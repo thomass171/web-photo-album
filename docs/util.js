@@ -5,6 +5,24 @@ function getUniqueId() {
     return uniqueid++;
 }
 
+function substringAfterLast(str, sub) {
+    var n = str.lastIndexOf(sub);
+    if (n == -1) {
+        return "";
+    }
+    str = str.substring(n + sub.length);
+    return str;
+}
+
+function substringBeforeLast(str, sub) {
+    var n = str.lastIndexOf(sub);
+    if (n == -1) {
+        return "";
+    }
+    str = str.substring(0, n);
+    return str;
+}
+
 class LocalDateTime {
     constructor(d) {
         if (d == null) {

@@ -13,6 +13,12 @@
 
 <body class="w3-light-grey">
 <!--
+There are two basic design ideas:
+1) content first
+   - don't use static header, footer, navigation bars that only occupy space
+2) keep it simple
+   - don't use custom css but only w3.css
+   - don't use w3-model(content). It has difficult to maintain side effects
 Reminder:
 w3-card-2:  Container for any HTML content (2px bordered shadow)
 w3-half: Half (1/2) screen column container
@@ -20,18 +26,6 @@ w3-row-padding: Row where all columns have a default padding (Responsive Class)
 w3-section:	Adds an 16px top and bottom margin to an element (Margin Class)
 w3-container: HTML container with 16px left and right padding (Container Class)
 -->
-<!-- Navigation (Stays on Top) -->
-<div class="w3-top w3-bar w3-black">
-    <h1 class="w3-center">Photo Album</h1>
-    <!--<a href="#home" class="w3-bar-item w3-button">Home</a>-->
-    <button onclick="switchView('scanview')" class="w3-bar-item w3-button">Scan View</button>
-    <button onclick="switchView('albumview')" class="w3-bar-item w3-button">Album View</button>
-</div>
-
-<!-- break for offset from top-->
-<br><br>
-<br><br>
-<br><br>
 
 <!-- Start Content -->
 <div class="w3-container">
@@ -50,7 +44,7 @@ w3-container: HTML container with 16px left and right padding (Container Class)
 
     <div id="albumview">
         <div class="w3-container">
-            <h1>Album</h1>
+            <h1 id="album_title"></h1>
             <ul id="chapterlist" class="w3-ul w3-card-4"></ul>
         </div>
         <div class="w3-container">
@@ -73,38 +67,16 @@ w3-container: HTML container with 16px left and right padding (Container Class)
             <div class="">
                 <div class="">
                     <div id="detaillist"></div>
-
-                </div>
-            </div>
-
-            <div class="">
-                <div class="">
-                    <div>
-                        <button id="btn_save" class=" w3-button w3-round w3-khaki " onclick="save()">Save</button>
-                        <button class=" w3-button w3-round w3-khaki " onclick='switchView("listview")'>Close</button>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="container">
-            <h1>Result</h1>
-            <div class="">
-                <div class="">
-                    <pre id="resultgrid"></pre>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- End Content -->
-
-    <footer class="w3-container w3-padding-32 w3-grey">
-        <div class="">
-            <div id="versionInfo"></div>
+    <div id="fullview" onclick="switchView('albumview')">
+        <!--<div class="w3-modal-content w3-animate-zoom">-->
+        <div id="fullscreenContainer" class="w3-container">
         </div>
-    </footer>
+    </div>
 </div>
 
 <script src="util.js"></script>
