@@ -15,6 +15,7 @@ var FULLSCREEN = 2;
 var ALBUM_IMAGE_STYLE = "";
 
 var fullscreenImageId;
+var latestAlbumViewScrollPos = 0;
 
 // order of dimensions is 4:3, 3:4
 var dimensions = [
@@ -353,6 +354,18 @@ function scanContent(url) {
 
 
 function switchView(view, imageName) {
+
+    if (view == "fullview") {
+        // comes from album view. Save current scroll position. Difficult to find
+        // the scrolled element. Probably its the window.
+        // latestAlbumViewScrollPos = $('#main').scrollTop();
+        // latestAlbumViewScrollPos = document.body.scrollTop;
+        // var p = $('body');
+        // latestAlbumViewScrollPos = p.scrollTop();
+        latestAlbumViewScrollPos = window.pageYOffset;
+        console.log("latestAlbumViewScrollPos ",latestAlbumViewScrollPos);
+    }
+
     //console.log("switchView to ", view);
     ['scanview', 'detailview', 'listview', 'albumview', 'fullview'].forEach(v => {
         $('#'+v).removeClass('w3-show');
@@ -368,6 +381,8 @@ function switchView(view, imageName) {
     if (view == "albumview") {
          $('#albumview').removeClass('w3-hide');
          $('#albumview').addClass('w3-show');
+         // return to previous scroll position
+         window.scrollBy(0, latestAlbumViewScrollPos);
     }
     if (view == "scanview") {
          $('#scanview').removeClass('w3-hide');
