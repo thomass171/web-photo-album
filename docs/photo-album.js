@@ -16,6 +16,7 @@ var ALBUM_IMAGE_STYLE = "";
 
 var fullscreenImageId;
 var latestAlbumViewScrollPos = 0;
+var currentAlbum = null;
 
 // order of dimensions is 4:3, 3:4
 var dimensions = [
@@ -212,7 +213,8 @@ function addAlbumImage(albumElement, targetCell) {
     $("#" + targetCell).append(htmlImage.html);
     $("#" + htmlImage.id).attr("src", dataurl);
     $("#" + htmlImage.id).click(function() {
-        switchView("fullview", albumElement.fileName);
+        switchView("fullview");
+        updateFullView(albumElement.fileName);
     });
 
     var tooltip = "" + albumElement.fileName + ": "+ albumElement.dimension;
@@ -352,8 +354,47 @@ function scanContent(url) {
       });
 }
 
+var lastSlideImage = null;
+var terminateSlideShow = false;
 
-function switchView(view, imageName) {
+function startSlideShow() {
+    switchView('fullview');
+    terminateSlideShow = false;
+    updateSlideShow();
+}
+
+function updateSlideShow() {
+    if (!terminateSlideShow) {
+        lastSlideImage = getNextImage(lastSlideImage);
+        updateFullView(lastSlideImage);
+        setTimeout(updateSlideShow, 5000);
+    }
+}
+
+function getNextImage(lastImageName) {
+    if (lastImageName == null) {
+        return currentAlbum.chapter[0].images[0];
+    }
+    for (var cidx = 0; cidx < currentAlbum.chapter.length; cidx++) {
+        var chapter = currentAlbum.chapter[cidx];
+        let index = chapter.images.indexOf(lastImageName);
+        if (index >= 0) {
+            // last image found
+            if (index < chapter.images.length - 1) {
+                return chapter.images[index+1];
+            }
+            // step to next chapter
+            if (cidx < currentAlbum.chapter.length - 1) {
+                return currentAlbum.chapter[cidx+1].images[0];
+            }
+            // back to beginning
+            return currentAlbum.chapter[0].images[0];
+        }
+    }
+    console.log("next image not found for ", lastImageName);
+}
+
+function switchView(view) {
 
     if (view == "fullview") {
         // comes from album view. Save current scroll position. Difficult to find
@@ -390,41 +431,41 @@ function switchView(view, imageName) {
     }
     if (view == "fullview") {
 
-        console.log("fullscreen for ", imageName)
-        var albumElement = allImagesMap.get(imageName);
-
-        // not sure about the best solution for having image completey on screen
-        var fixSize = false;
-        var dataurl = null;
-        if (fixSize) {
-            var fullscreenDimension = getDimension(albumElement.dimension, FULLSCREEN);
-
-            dataurl = createDataUrlFromCanvas(fullscreenDimension.width, fullscreenDimension.height, ctx => {
-                ctx.drawImage(albumElement.getHtmlImage(), 0, 0, fullscreenDimension.width, fullscreenDimension.height);
-            });
-        } else {
-            console.log("albumElement.getHtmlImage()",albumElement.getHtmlImage())
-            dataurl = albumElement.getHtmlImage().src;
-        }
-        //console.log("dataurl",dataurl);
-
-        $("#" + fullscreenImageId).remove();
-        //<img id="img_full" style="max-width: 100%; height: auto"/>
-        //var htmlImage = createImage("max-width: 100%; height: auto");
-        var style = "max-width: 100%; height: auto";
-        if (albumElement.isPortrait()) {
-            style = "max-width: 50%; height: auto";
-        }
-        var htmlImage = createImage(style, "w3-image");
-        fullscreenImageId = htmlImage.id;
-        $("#fullscreenContainer").append(htmlImage.html);
-        $("#" + fullscreenImageId).attr("src", dataurl);
-
         $('#fullview').removeClass('w3-hide');
         $('#fullview').addClass('w3-show');
     }
 }
 
+function updateFullView(imageName) {
+    var albumElement = allImagesMap.get(imageName);
+
+    // not sure about the best solution for having image completey on screen
+    var fixSize = false;
+    var dataurl = null;
+    if (fixSize) {
+        var fullscreenDimension = getDimension(albumElement.dimension, FULLSCREEN);
+
+        dataurl = createDataUrlFromCanvas(fullscreenDimension.width, fullscreenDimension.height, ctx => {
+            ctx.drawImage(albumElement.getHtmlImage(), 0, 0, fullscreenDimension.width, fullscreenDimension.height);
+        });
+    } else {
+        console.log("albumElement.getHtmlImage()",albumElement.getHtmlImage())
+        dataurl = albumElement.getHtmlImage().src;
+    }
+    //console.log("dataurl",dataurl);
+
+    $("#" + fullscreenImageId).remove();
+    //<img id="img_full" style="max-width: 100%; height: auto"/>
+    //var htmlImage = createImage("max-width: 100%; height: auto");
+    var style = "max-width: 100%; height: auto";
+    if (albumElement.isPortrait()) {
+        style = "max-width: 50%; height: auto";
+    }
+    var htmlImage = createImage(style, "w3-image");
+    fullscreenImageId = htmlImage.id;
+    $("#fullscreenContainer").append(htmlImage.html);
+    $("#" + fullscreenImageId).attr("src", dataurl);
+}
 
 /**
  * Not used currently because not sure about the effects. Not possible to modifiy DOM by jquery in fullscreen?
@@ -515,6 +556,7 @@ function showAlbumByDefinition(albumDefinition) {
     albumDefinition.chapter.forEach(chapter => {
         addChapter(chapter);
     });
+    currentAlbum = albumDefinition;
 }
 
 function updateScanStatus() {

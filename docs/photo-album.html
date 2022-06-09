@@ -45,6 +45,7 @@ w3-container: HTML container with 16px left and right padding (Container Class)
     <div id="albumview">
         <div class="w3-container">
             <h1 id="album_title"></h1>
+            <button id="btn_startSlideShow" class=" w3-button w3-round w3-khaki " onclick="startSlideShow()">Slideshow</button>
             <ul id="chapterlist" class="w3-ul w3-card-4"></ul>
         </div>
         <div class="w3-container">
@@ -72,7 +73,7 @@ w3-container: HTML container with 16px left and right padding (Container Class)
         </div>
     </div>
 
-    <div id="fullview" onclick="switchView('albumview')">
+    <div id="fullview" onclick="terminateSlideShow=true; switchView('albumview')">
         <!--<div class="w3-modal-content w3-animate-zoom">-->
         <div id="fullscreenContainer" class="w3-container">
         </div>
