@@ -5,22 +5,26 @@ function getUniqueId() {
     return uniqueid++;
 }
 
-function substringAfterLast(str, sub) {
-    var n = str.lastIndexOf(sub);
-    if (n == -1) {
-        return "";
+var StringUtils = {
+    substringAfterLast : function(str, sub) {
+        var n = str.lastIndexOf(sub);
+        if (n == -1) {
+            return "";
+        }
+        str = str.substring(n + sub.length);
+        return str;
+    },
+    substringBeforeLast : function(str, sub) {
+        var n = str.lastIndexOf(sub);
+        if (n == -1) {
+            return "";
+        }
+        str = str.substring(0, n);
+        return str;
+    },
+    contains : function(str, sub) {
+        return str.indexOf( sub ) !== -1;
     }
-    str = str.substring(n + sub.length);
-    return str;
-}
-
-function substringBeforeLast(str, sub) {
-    var n = str.lastIndexOf(sub);
-    if (n == -1) {
-        return "";
-    }
-    str = str.substring(0, n);
-    return str;
 }
 
 class LocalDateTime {
@@ -51,7 +55,7 @@ class LocalDateTime {
         return this.toISOLocal();
         var s = this.date.toISOString();
         //console.log("toString:", s);
-        s = substringBeforeLast(s, ".");
+        s = StringUtils.substringBeforeLast(s, ".");
         //console.log("toString:", s);
         return s;
     }

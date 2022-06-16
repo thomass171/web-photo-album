@@ -283,76 +283,10 @@ function addChapter(chapter, imageObjectURL) {
 /**
  *
  */
-function loadImage(url, imageName, imageHandler) {
-    //console.log("loadImage ", imageName);
-
-    fetch(url + "/" + imageName, {
-        method: 'GET'
-        })
-    .then(response => {
-        if (!response.ok) {
-            var error = new Error('fetch failed:' + response.status);
-            error.status = response.status;
-            throw error;
-        }
-        return response.blob();
-      })
-    .then(imageBlob => {
-        // Then create a local URL for that image and print it
-        const imageObjectURL = URL.createObjectURL(imageBlob);
-        //console.log(imageObjectURL);
-        processLoadingImage(imageName, imageObjectURL, imageHandler);
-    })
-    .catch(error => {
-        console.error('There has been a problem with your fetch operation:', error);
-        var image = registerImage(imageName);
-        image.error = error.status;
-        var dataUrl = createDataUrlFromCanvas(100,100, ctx => {
-            //console.log("Painting ",image.detailImageId, imageName)
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(30-1, 20-1);
-            ctx.stroke();
-        });
-        //$("#" + image.detailImageId).attr("src", dataUrl);
-        addScanFailure(image, scanResult.scanned);
-        scanResult.scanned++;
-        scanResult.failed++;
-        updateScanStatus();
-    });
-}
 
 /**
  *
  */
-function scanContent(url) {
-
-    console.log("scanContent from " + url)
-    switchView('scanview');
-    fetch(url, {
-        method: 'GET'
-        })
-      .then(response => response.text())
-      .then(text => {
-        data = text.split("\n");
-        //console.log(data);
-        //console.log(data[1]);
-        scanResult.totalToScan = data.length;
-        scanResult.scanned = 0;
-        scanResult.failed = 0;
-        scanResult.subdir = substringAfterLast(url, "/");
-        // build grid like https://www.w3schools.com/w3css/w3css_grid.asp
-        var scanGrid = buildW3Grid(data.length, 6, "w3-row-padding w3-margin-top", "w3-col m2", "previewcell");
-        $("#scanpreview").append(scanGrid.html);
-        // optionally limit the number of files for better performance during development
-        //data = data.slice(0,72)
-        data.forEach(element => { if (isImage(element)) {
-            //loadImage(url, element, addScanPreview);
-            loadImage(url, element);
-            }
-        });
-      });
-}
 
 var lastSlideImage = null;
 var terminateSlideShow = false;
@@ -501,7 +435,7 @@ function buildAlbum() {
 function buildAlbumDefinitionFromScanResult() {
     var albumDefinition = {};
     albumDefinition.chapter = [];
-    albumDefinition.title = scanResult.subdir;
+    albumDefinition.title = loader.subdir;
 
     console.log("Building album for " + allImagesMap.size + " images.")
 
@@ -576,10 +510,29 @@ function init() {
         $("#debuginfo").html("(host="+hostparam+")");
     }
     //$("#btn_save").prop("disabled", !mazeInEdit.dirty);
-    //webdavContent(host)
-    scanContent(host)
 
-    switchView("scanview");
+    initLoader(host);
+
+    //webdavContent(host)
+    switchView('scanview');
+    loader.loadDir(function (arrayOfFileNames) {
+        //console.log(data);
+               //console.log(data[1]);
+        scanResult.totalToScan = arrayOfFileNames.length;
+        scanResult.scanned = 0;
+        scanResult.failed = 0;
+
+        // build grid like https://www.w3schools.com/w3css/w3css_grid.asp
+        var scanGrid = buildW3Grid(arrayOfFileNames.length, 6, "w3-row-padding w3-margin-top", "w3-col m2", "previewcell");
+        $("#scanpreview").append(scanGrid.html);
+        // optionally limit the number of files for better performance during development
+        arrayOfFileNames = arrayOfFileNames.slice(0,12)
+        arrayOfFileNames.forEach(element => { if (isImage(element)) {
+            //loadImage(url, element, addScanPreview);
+               loader.loadImage(element);
+               }
+        });
+    });
 
     document.addEventListener('fullscreenchange', exitHandlerFullscreen);
     document.addEventListener('webkitfullscreenchange', exitHandlerFullscreen);
