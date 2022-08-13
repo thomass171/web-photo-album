@@ -76,14 +76,10 @@ function getDimension(realDimension, usecase) {
             return dimensions[usecase][1];
     }
     var parts = realDimension.split("x");
-    if (parts[0] / parts[1] - 1.3333 < 0.0001) {
-        return dimensions[usecase][0];
-    }
-    if (parts[1] / parts[0] - 1.3333 < 0.0001) {
-        return dimensions[usecase][1];
-    }
-    console.log("unknown dimension ", realDimension);
-    return { width: 100, height: 75 };
+    var base = dimensions[usecase][0].width;
+    console.log("unknown dimension ", realDimension, ". Using base ", base);
+
+    return { width: base, height: base * parts[1] / parts[0]};
 
 }
 
