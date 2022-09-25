@@ -2,7 +2,7 @@
 A simple photo album based on simple HTML/JS/CSS intended for use with Nextcloud via webdav.
 No build is needed.
 
-See https://github.com/thomass171/web-photo-album/web-photo-album.html  for an working example. 
+See https://thomass171.github.io/web-photo-album/web-photo-album.html for an working example. 
 This example uses a free Nextcloud instance at hosting.de and a narrow bandwidth example of
 a webdav gateway.
 
