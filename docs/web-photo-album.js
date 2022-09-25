@@ -1,5 +1,5 @@
 /**
- * JS related to photo-album.html
+ * JS related to web-photo-album.html
  */
 
 // default values for development only
@@ -498,7 +498,7 @@ function updateScanStatus() {
 
 
 /**
- * init for photo-album.html
+ * init for web-photo-album.html
  */
 function init() {
     var url = new URL(window.location.href);
