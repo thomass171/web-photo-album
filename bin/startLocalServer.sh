@@ -1,5 +1,6 @@
 #/bin/sh
 #
+# Start a local web server for testing without webdav.
 
 if [ -z "$1" ]
 then

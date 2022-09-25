@@ -2,7 +2,10 @@
  * JS related to photo-album.html
  */
 
+// default values for development only
 var host = "http://localhost:8009";
+var user = "";
+var gateway = "";
 
 // imagename (incl suffix) is key, value is AlbumElement
 var allImagesMap = new Map();
@@ -503,11 +506,20 @@ function init() {
     var hostparam = url.searchParams.get("host");
     if (hostparam != null) {
         host = hostparam;
-        $("#debuginfo").html("(host="+hostparam+")");
+        console.log("host="+host);
     }
-    //$("#btn_save").prop("disabled", !mazeInEdit.dirty);
+    var userparam = url.searchParams.get("user");
+    if (userparam != null) {
+        user = userparam;
+        console.log("user="+user);
+    }
+    var gatewayparam = url.searchParams.get("gateway");
+    if (gatewayparam != null) {
+        gateway = gatewayparam;
+        console.log("gateway="+gateway);
+    }
 
-    initLoader(host);
+    initLoader(host, gateway);
 
     //webdavContent(host)
     switchView('scanview');

@@ -1,19 +1,16 @@
 
 var loader = {};
 
-function initLoader(host) {
+function initLoader(host, gateway) {
 
     console.log("initLoader host=" + host);
 
     var isWebDav = StringUtils.contains(host, "webdav");
 
     if (isWebDav) {
-        // needs a proxy
-        //'Content-Type': 'text/xml; charset=utf-8',
-        //'Authorization': 'Basic ' + btoa(cred_user + ":" + password)
-
-        loader.contentUrl = "http://localhost:8019/api/webdav/content?host=" + encodeURIComponent(host) + "&user=" + cred_user;
-        loader.imageUrl = "http://localhost:8019/api/webdav/image?host=" + encodeURIComponent(host) + "&user=" + cred_user + "&name=";
+        // needs a gateway
+        loader.contentUrl = gateway + "/api/webdav/content?host=" + encodeURIComponent(host) + "&user=" + user;
+        loader.imageUrl = gateway + "/api/webdav/image?host=" + encodeURIComponent(host) + "&user=" + user + "&name=";
         console.log("webdav via proxy from " + loader.contentUrl );
         loader.subdir = "unknown";
     } else {

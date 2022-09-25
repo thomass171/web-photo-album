@@ -1,6 +1,8 @@
 #
 # A simple web server for development only!
 #
+# Provides a list of files in a directory, which a regular HTTP server never does.
+#
 # NOT FOR PRODUCTION. IT HAS MANY SECURITY ISSUES.
 #
 from http.server import HTTPServer, BaseHTTPRequestHandler, SimpleHTTPRequestHandler
