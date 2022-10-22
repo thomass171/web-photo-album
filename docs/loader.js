@@ -32,7 +32,7 @@ function initLoader(host, gateway) {
             directoryHandler(data);
         });
     }
-    loader.loadImage = function(imageName, imageHandler) {
+    loader.loadImage = function(imageName, imageId, imageLoadedHandler) {
        //console.log("loadImage ", imageName);
 
        fetch(loader.imageUrl + "/" + imageName, {
@@ -50,11 +50,44 @@ function initLoader(host, gateway) {
            // Then create a local URL for that image and print it
            const imageObjectURL = URL.createObjectURL(imageBlob);
            //console.log(imageObjectURL);
-           processLoadingImage(imageName, imageObjectURL, imageHandler);
+           // from https://stackoverflow.com/questions/27619555/image-onload-not-working-with-img-and-blob
+           // same as 'img.onload()'?
+           var img = document.getElementById(imageId);
+           img.addEventListener('load', function () {
+               console.log("image " + imageName + " loaded");
+               var metadata = {};
+               EXIF.getData(img, function() {
+
+                   var GPSLatitude = EXIF.getTag(this, "GPSLatitude");
+                   var DateTimeOriginal = EXIF.getTag(this, "DateTimeOriginal");
+                   //console.log("DateTimeOriginal:", DateTimeOriginal)
+                   if (DateTimeOriginal != null) {
+                       // According to the EXIF standard, the property is in ISO 8601 format but does not include
+                       // the timezone suffix and should be rendered in local time - that is, in the time zone in
+                       // which the photo was taken.
+                       //var parts = DateTimeOriginal.split(" ");
+                       //albumElement.date = parts[0].replace(/:/g, "-");
+                       //albumElement.time = parts[1];
+                       metadata.localDateTime = LocalDateTime.parse(DateTimeOriginal);
+                       //console.log("localDateTime=", albumElement.localDateTime);
+                   }
+                   //image.width = EXIF.getTag(this, "PixelXDimension");
+                   //image.height = EXIF.getTag(this, "PixelYDimension");
+                   metadata.height = img.height;
+                   metadata.width = img.width;
+                   metadata.dimension = "" + img.width + "x" + img.height;
+                   //console.log("GPSLatitude:", GPSLatitude)
+                   imageLoadedHandler(metadata, imageName, imageObjectURL);
+               });
+           });
+           // actually load after registration of 'onload' listener
+           //$("#" + albumElement.getImageIdOfInitialLoad()).attr("src", imageObjectURL);
+           $("#" + imageId).attr("src", imageObjectURL);
        })
        .catch(error => {
            console.error('There has been a problem with your fetch operation:', error);
-           var image = registerImage(imageName);
+           //TODO replace registerImage
+           var image = registerImage(imageName, false);
            image.error = error.status;
            var dataUrl = createDataUrlFromCanvas(100,100, ctx => {
                //console.log("Painting ",image.detailImageId, imageName)

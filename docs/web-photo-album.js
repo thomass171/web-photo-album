@@ -8,6 +8,10 @@ var user = "";
 var gateway = "";
 
 // imagename (incl suffix) is key, value is AlbumElement
+// better without suffix?, because it might be other case and
+// makes thumbnail matching hard. The AlbumElement contains the exact name.
+// No, with suffix. Without suffix moves the case problem to a chapter definition.
+// Not containing thumbnails. Also for thumbnail images contains real file name
 var allImagesMap = new Map();
 var scanResult = {};
 
@@ -16,10 +20,13 @@ var ALBUM = 1;
 var FULLSCREEN = 2;
 
 var ALBUM_IMAGE_STYLE = "";
+var THUMBNAIL_SUFFIX = "_small";
 
 var fullscreenImageId;
 var latestAlbumViewScrollPos = 0;
 var currentAlbum = null;
+
+var ALBUM_DEFINITION_FILE = "AlbumDefinition.json";
 
 // order of dimensions is 4:3, 3:4
 var dimensions = [
@@ -35,9 +42,15 @@ var dimensions = [
 ];
 
 class AlbumElement {
-    constructor(fileName, detailImageId) {
-        this.detailImageId = detailImageId;
+    /**
+     * fileName is always the 'real' name, even if a thumbnail exists.
+     */
+    constructor(fileName, thumbnailName) {
+        console.log("Building AlbumElement with fileName '" + fileName + "' and thumbnailName '" + thumbnailName + "'");
+        this.detailImageId = -1;
+        this.thumbnailImageId = -1;
         this.fileName = fileName;
+        this.thumbnailName = thumbnailName;
         this.date = null;
         this.time = null;
         this.width = null;
@@ -46,8 +59,17 @@ class AlbumElement {
         this.localDateTime = null;
     }
 
-    getHtmlImage() {
+    getHtmlFullImage() {
         return document.getElementById(this.detailImageId);
+    }
+
+    getHtmlPreviewImage() {
+        if (this.detailImageId != -1) {
+            return document.getElementById(this.detailImageId);
+        }
+        var img = document.getElementById(this.thumbnailImageId);
+        //console.log("getHtmlPreviewImage img=", img)
+        return img;
     }
 
     getDayGroup() {
@@ -60,6 +82,97 @@ class AlbumElement {
 
     isPortrait() {
         return this.height > this.width;
+    }
+
+    getImageIdOfInitialLoad() {
+        if (this.detailImageId != -1) {
+            return this.detailImageId;
+        }
+        return this.thumbnailImageId;
+    }
+
+    /**
+     * Heads up. Property dimension is a "WxH" string, not a dimension object
+     */
+    getThumbnailDimension() {
+        if (this.detailImageId != -1) {
+            // Calc thumbnail size
+            return getDimension(this.dimension, THUMBNAIL);
+        }
+        // just use thumbnails original size. Hmm. Really?
+        //console.log("using thumnail dimension ",this.dimension)
+        //return {this.dimension;
+        return getDimension(this.dimension, THUMBNAIL);
+    }
+
+    /**
+     * if the element has a thumbnail, prefer this. Otherwise load the full image.
+     */
+    loadPreview() {
+        var currentAE = this;
+        console.log("loadPreview thumbnailName=",this.thumbnailName);
+        var imageId;
+        var fileName;
+        if (this.thumbnailName != null) {
+            this.thumbnailImageId = addImageSlot();
+            imageId = this.thumbnailImageId ;
+            fileName = this.thumbnailName;
+        } else {
+            this.detailImageId = addImageSlot();
+            imageId = this.detailImageId ;
+            fileName = this.fileName;
+        }
+        loader.loadImage(fileName, imageId, function(metadata) {
+            // Assume that thumnail and real image have same meta data
+            //console.log("metadata for " + currentAE.thumbnailName + "=", metadata,Object.keys(metadata));
+            currentAE.localDateTime = metadata.localDateTime;
+            currentAE.height = metadata.height;
+            currentAE.width = metadata.width;
+            currentAE.dimension = metadata.dimension;
+            addScanPreview(currentAE, scanResult.scanned);
+            scanResult.scanned++;
+            updateScanStatus();
+            });
+    }
+
+    /**
+     * Show image in full view. If only thumbnail exists, image needs to be loaded first.
+     */
+    fullView() {
+        if (this.detailImageId == -1) {
+            var currentAE = this;
+            console.log("Loading full image",this.fileName);
+            this.detailImageId = addImageSlot();
+            loader.loadImage(this.fileName, this.detailImageId, function(metadata) {
+                console.log("Loading full image callback");
+                var dataurl = currentAE.getHtmlFullImage().src;
+                fillFullView(dataurl, currentAE.isPortrait());
+            });
+        } else {
+            var dataurl = this.getHtmlFullImage().src;
+            fillFullView(dataurl, this.isPortrait());
+        }
+    }
+
+    /**
+     * Redundant to "fullView()"?
+     */
+    updateFullView() {
+        // not sure about the best solution for having image completey on screen
+        var fixSize = false;
+        var dataurl = null;
+        if (fixSize) {
+            // currently not used
+            var fullscreenDimension = getDimension(this.dimension, FULLSCREEN);
+
+            dataurl = createDataUrlFromCanvas(fullscreenDimension.width, fullscreenDimension.height, ctx => {
+                ctx.drawImage(this.getHtmlFullImage(), 0, 0, fullscreenDimension.width, fullscreenDimension.height);
+            });
+        } else {
+            //console.log("albumElement.getHtmlFullImage()",albumElement.getHtmlFullImage())
+            //dataurl = albumElement.getHtmlFullImage().src;
+            this.fullView();
+        }
     }
 }
 
@@ -114,6 +227,7 @@ function buildW3Grid(elementCount, cols, rowClasses, colClasses, cellIdPrefix) {
 }
 
 function createDataUrlFromCanvas(width, height, handler) {
+    //console.log("Creating canvas", width, height)
     var canvas = document.createElement("canvas");
     var ctx = canvas.getContext("2d");
     // canvas (in Chrome?) has default size 300x150
@@ -122,6 +236,7 @@ function createDataUrlFromCanvas(width, height, handler) {
 
     handler(ctx);
     // https://developer.mozilla.org/de/docs/Web/API/HTMLCanvasElement/toDataURL
+    // If the height or width of the canvas is 0 or larger than the maximum canvas size, the string "data:," is returned.
     return canvas.toDataURL("image/jpeg", 1.0);
 }
 
@@ -129,59 +244,19 @@ function isImage(filename) {
     return filename.toLowerCase().endsWith(".jpg") || filename.toLowerCase().endsWith(".jpeg");
 }
 
-function processLoadingImage(imageName, imageObjectURL) {
-    //console.log("processLoadingImage ", imageName, imageObjectURL);
-
-    var albumElement = registerImage(imageName);
-    //var imageid = image.detailImageId;
-    var img = albumElement.getHtmlImage();
-    //image.img=img;
-
-    // from https://stackoverflow.com/questions/27619555/image-onload-not-working-with-img-and-blob
-    // same as 'img.onload()'?
-    img.addEventListener('load', function () {
-        console.log("image loaded");
-        EXIF.getData(img, function() {
-            var GPSLatitude = EXIF.getTag(this, "GPSLatitude");
-            var DateTimeOriginal = EXIF.getTag(this, "DateTimeOriginal");
-            //console.log("DateTimeOriginal:", DateTimeOriginal)
-            if (DateTimeOriginal != null) {
-                // According to the EXIF standard, the property is in ISO 8601 format but does not include
-                // the timezone suffix and should be rendered in local time - that is, in the time zone in
-                // which the photo was taken.
-                //var parts = DateTimeOriginal.split(" ");
-                //albumElement.date = parts[0].replace(/:/g, "-");
-                //albumElement.time = parts[1];
-                albumElement.localDateTime = LocalDateTime.parse(DateTimeOriginal);
-                //console.log("localDateTime=", albumElement.localDateTime);
-            }
-            //image.width = EXIF.getTag(this, "PixelXDimension");
-            //image.height = EXIF.getTag(this, "PixelYDimension");
-            albumElement.height = img.height;
-            albumElement.width = img.width;
-            albumElement.dimension = "" + img.width + "x" + img.height;
-            //console.log("GPSLatitude:", GPSLatitude)
-            //console.log("dimension:", albumElement.dimension)
-
-            addScanPreview(albumElement, scanResult.scanned);
-            scanResult.scanned++;
-            updateScanStatus();
-        });
-    });
-    // actually load after registration of 'onload' listener
-    $("#" + albumElement.detailImageId).attr("src", imageObjectURL);
-}
-
 /**
- *
+ * Add scan preview image to the prepared scan grid at the well defined
+ * position(index;order of scanning) for this album element.
+ * Might be a thumbnail or full image.
  */
 function addScanPreview(albumElement, index) {
 
-    var previewDimension = getDimension(albumElement.dimension, THUMBNAIL);
-    //console.log("dimension=",dimension)
-    // Show resized image in preview element
+    //var previewDimension = getDimension(albumElement.dimension, THUMBNAIL);
+    var previewDimension = albumElement.getThumbnailDimension();
+    //console.log("previewDimension for " + albumElement.thumbnailName + "=",previewDimension)
+    // Show possibly resized image in preview element
     var dataurl = createDataUrlFromCanvas(previewDimension.width, previewDimension.height, ctx => {
-        ctx.drawImage(albumElement.getHtmlImage(), 0, 0, previewDimension.width, previewDimension.height);
+        ctx.drawImage(albumElement.getHtmlPreviewImage(), 0, 0, previewDimension.width, previewDimension.height);
         if (isUndefined(albumElement.localDateTime)) {
             ctx.beginPath();
             ctx.moveTo(0, 0);
@@ -206,14 +281,14 @@ function addAlbumImage(albumElement, targetCell) {
     //console.log("dimension=",dimension)
     // Show resized image in preview element
     var dataurl = createDataUrlFromCanvas(albumDimension.width, albumDimension.height, ctx => {
-        ctx.drawImage(albumElement.getHtmlImage(), 0, 0, albumDimension.width, albumDimension.height);
+        ctx.drawImage(albumElement.getHtmlPreviewImage(), 0, 0, albumDimension.width, albumDimension.height);
     });
     var htmlImage = createImage("max-width: 100%; height: auto");
     $("#" + targetCell).append(htmlImage.html);
     $("#" + htmlImage.id).attr("src", dataurl);
     $("#" + htmlImage.id).click(function() {
         switchView("fullview");
-        updateFullView(albumElement.fileName);
+        albumElement.updateFullView();
     });
 
     var tooltip = "" + albumElement.fileName + ": "+ albumElement.dimension;
@@ -235,23 +310,6 @@ function addScanFailure(image, index) {
     var tooltip = "" + image.fileName + ": "+ image.dimension;
     $("#previewcell" + index).attr('title', tooltip);
 
-}
-
-/**
- * Also for failed images.
- * 1) Adds full image to detaillist
- * 2) adds image to global list
- */
-function registerImage(imageName) {
-
-    var imageid = "image_" + getUniqueId();
-    var content = "<div class=''>";
-    content += "<img id='" + imageid + "'/>";
-    content += "</div>";
-    $("#detaillist").append(content);
-    var albumElement = new AlbumElement(imageName, imageid);
-    allImagesMap.set(imageName, albumElement);
-    return albumElement;
 }
 
 /**
@@ -299,7 +357,7 @@ function startSlideShow() {
 function updateSlideShow() {
     if (!terminateSlideShow) {
         lastSlideImage = getNextImage(lastSlideImage);
-        updateFullView(lastSlideImage);
+        allImagesMap.get(lastSlideImage).updateFullView();
         setTimeout(updateSlideShow, 5000);
     }
 }
@@ -341,17 +399,10 @@ function switchView(view) {
     }
 
     //console.log("switchView to ", view);
-    ['scanview', 'detailview', 'listview', 'albumview', 'fullview'].forEach(v => {
+    ['scanview', 'listview', 'albumview', 'fullview'].forEach(v => {
         $('#'+v).removeClass('w3-show');
         $('#'+v).addClass('w3-hide');
     });
-    if (view == "detailview") {
-         $('#listview').removeClass('w3-show');
-         $('#listview').addClass('w3-hide');
-         $('#detailview').addClass('w3-show');
-         $('#detailview').removeClass('w3-hide');
-
-    }
     if (view == "albumview") {
          $('#albumview').removeClass('w3-hide');
          $('#albumview').addClass('w3-show');
@@ -369,29 +420,13 @@ function switchView(view) {
     }
 }
 
-function updateFullView(imageName) {
-    var albumElement = allImagesMap.get(imageName);
-
-    // not sure about the best solution for having image completey on screen
-    var fixSize = false;
-    var dataurl = null;
-    if (fixSize) {
-        var fullscreenDimension = getDimension(albumElement.dimension, FULLSCREEN);
-
-        dataurl = createDataUrlFromCanvas(fullscreenDimension.width, fullscreenDimension.height, ctx => {
-            ctx.drawImage(albumElement.getHtmlImage(), 0, 0, fullscreenDimension.width, fullscreenDimension.height);
-        });
-    } else {
-        console.log("albumElement.getHtmlImage()",albumElement.getHtmlImage())
-        dataurl = albumElement.getHtmlImage().src;
-    }
-    //console.log("dataurl",dataurl);
-
+function fillFullView(dataurl, isPortrait) {
     $("#" + fullscreenImageId).remove();
     //<img id="img_full" style="max-width: 100%; height: auto"/>
     //var htmlImage = createImage("max-width: 100%; height: auto");
     var style = "max-width: 100%; height: auto";
-    if (albumElement.isPortrait()) {
+    //if (albumElement.isPortrait()) {
+    if (isPortrait) {
         style = "max-width: 50%; height: auto";
     }
     var htmlImage = createImage(style, "w3-image");
@@ -496,6 +531,16 @@ function updateScanStatus() {
     $("#scanstatus").html("(" + scanResult.scanned +  "/" + scanResult.totalToScan + ", " + scanResult.failed + " failed)");
 }
 
+function findThumbnailByBasename(thumbnails, basename) {
+    var found = null;
+    thumbnails.forEach(value => {
+        //console.log(basename," ",value," ")
+        if (StringUtils.substringBeforeLast(value, ".") == basename + THUMBNAIL_SUFFIX) {
+            found = value;
+        }
+    });
+    return found;
+}
 
 /**
  * init for web-photo-album.html
@@ -525,21 +570,58 @@ function init() {
     switchView('scanview');
     loader.loadDir(function (arrayOfFileNames) {
         //console.log(data);
-               //console.log(data[1]);
-        scanResult.totalToScan = arrayOfFileNames.length;
-        scanResult.scanned = 0;
-        scanResult.failed = 0;
+        console.log("" + arrayOfFileNames.length + " files found");
+        if (arrayOfFileNames.includes(ALBUM_DEFINITION_FILE)) {
+            console.log("album definition file found");
+        } else {
+            // totalToScan is the total number of files found, not only images
+            scanResult.totalToScan = arrayOfFileNames.length;
+            scanResult.scanned = 0;
+            scanResult.failed = 0;
 
-        // build grid like https://www.w3schools.com/w3css/w3css_grid.asp
-        var scanGrid = buildW3Grid(arrayOfFileNames.length, 6, "w3-row-padding w3-margin-top", "w3-col m2", "previewcell");
-        $("#scanpreview").append(scanGrid.html);
-        // optionally limit the number of files for better performance during development
-        arrayOfFileNames = arrayOfFileNames.slice(0,12)
-        arrayOfFileNames.forEach(element => { if (isImage(element)) {
-            //loadImage(url, element, addScanPreview);
-               loader.loadImage(element);
-               }
-        });
+            // optionally limit the number of files for better performance during development
+            // arrayOfFileNames = arrayOfFileNames.slice(0,12)
+
+            // step1: collect thumbnails
+            var thumbnails = [];
+            console.log("step 1");
+            arrayOfFileNames.forEach(element => {
+                if (isImage(element)) {
+                    //console.log("element ", element)
+                    var imageName = element;
+                    if (FilenameUtils.isThumbnail(imageName)) {
+                        thumbnails.push(imageName);
+                        //imageName = imageName.replace("_small", "");
+                        //console.log("thumbnailName ", thumbnailName)
+                    }
+                }
+            });
+            // step 2: build album elements by image names
+            console.log("step 2");
+            arrayOfFileNames.forEach(element => {
+                if (isImage(element)) {
+                    //console.log("element ", element)
+                    var imageName = element;
+                    if (!FilenameUtils.isThumbnail(imageName)) {
+                        var basename = StringUtils.substringBeforeLast(imageName, ".");
+                        var thumbnailName = findThumbnailByBasename(thumbnails, basename);
+                        console.log("Found thumbnail " + thumbnailName + " for " + imageName)
+                        albumElement = new AlbumElement(imageName, thumbnailName);
+                        allImagesMap.set(imageName, albumElement);
+                    }
+                } else {
+                    console.log("Scan skipped file '"+ element + "' because its no image");
+                }
+            });
+            // step 3: load previews
+            // build grid like https://www.w3schools.com/w3css/w3css_grid.asp
+            console.log("step3");
+            var scanGrid = buildW3Grid(allImagesMap.size, 6, "w3-row-padding w3-margin-top", "w3-col m2", "previewcell");
+            $("#scanpreview").append(scanGrid.html);
+            allImagesMap.forEach((value, key) => {
+                value.loadPreview();
+            });
+        }
     });
 
     document.addEventListener('fullscreenchange', exitHandlerFullscreen);

@@ -27,6 +27,16 @@ var StringUtils = {
     }
 }
 
+var FilenameUtils = {
+    basename : function(fname) {
+        return StringUtils.substringBeforeLast(fname, ".");
+    },
+    isThumbnail : function(fname) {
+        var basename = FilenameUtils.basename(fname);
+        return basename.endsWith(THUMBNAIL_SUFFIX);
+    }
+}
+
 class LocalDateTime {
     constructor(d) {
         if (d == null) {
@@ -287,6 +297,15 @@ function createImage(style, optclass = "") {
     return {html: html, id: id};
 }
 
+function addImageSlot() {
+    var imageid = "image_" + getUniqueId();
+    var content = "<div class=''>";
+    content += "<img id='" + imageid + "'/>";
+    content += "</div>";
+    $("#imagelist").append(content);
+    return imageid;
+}
+
 function addListItem(listid, content, optclass) {
     var item_id = "list_item_" + getUniqueId();
     var item = "<li id='" + item_id + "' class=' " + optclass + " '>"
@@ -306,8 +325,6 @@ function isUndefined(o) {
     return false;
 }
 
-
-
 /**
  * Format is YYYY-MM-DD
  */
@@ -316,6 +333,18 @@ function date2JsDate(dateString) {
     console.log("jsDate=", key.substring(8,10));
     return jsDate;
 }
+
+/*function isImageWithThumbnail(fileName, arrayOfFileNames, thumbnail_suffix) {
+
+    var basename = FilenameUtils.basename(fileName);
+    var result = false;
+    ['jpg', 'JPG'].forEach(v => {
+        if (arrayOfFileNames.includes(basename + thumbnail_suffix + "." + v)) {
+            result = true;
+        }
+    });
+    return result;
+}*/
 
 
 
