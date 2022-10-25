@@ -45,7 +45,8 @@ an album definition file.
 - Press 'Build album'
 - Check the grouping of images by date. Title will be "unknown".
 - Check all images are shown
-- Check tooltip on each image. Should show real filename and effective preview dimension.
+- Check tooltip on images. Should show real filename and effective preview dimension.
 - Click an preview without thumbnail. Full view should show it immediatly
 - Click an preview with thumbnail. Full view should show it after some loading time. Click again full view should show it immediatly
 - Start slide show
+- Copy album definition file to directory. Relaunch app.
