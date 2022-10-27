@@ -11,6 +11,7 @@ function initLoader(host, gateway) {
         // needs a gateway
         loader.contentUrl = gateway + "/api/webdav/content?host=" + encodeURIComponent(host) + "&user=" + user;
         loader.imageUrl = gateway + "/api/webdav/image?host=" + encodeURIComponent(host) + "&user=" + user + "&name=";
+        loader.textUrl = gateway + "/api/webdav/text?host=" + encodeURIComponent(host) + "&user=" + user + "&name=";
         console.log("webdav via proxy from " + loader.contentUrl );
         loader.subdir = "unknown";
     } else {
@@ -32,6 +33,7 @@ function initLoader(host, gateway) {
             directoryHandler(data);
         });
     }
+
     loader.loadImage = function(imageName, imageId, imageLoadedHandler) {
        //console.log("loadImage ", imageName);
 
@@ -102,5 +104,28 @@ function initLoader(host, gateway) {
            scanResult.failed++;
            updateScanStatus();
        });
-   }
+    }
+
+    // For text files, but no images etc.
+    loader.loadText = function(fileName, fileLoadedHandler) {
+        //console.log("loadFile ", fileName);
+
+        fetch(loader.textUrl + "/" + fileName, {
+            method: 'GET'
+            })
+        .then(response => {
+            if (!response.ok) {
+                var error = new Error('fetch failed:' + response.status);
+                error.status = response.status;
+                throw error;
+            }
+            return response.text();
+        })
+        .then(text => {
+            fileLoadedHandler(text);
+        })
+        .catch(error => {
+            console.error('There has been a problem with your fetch operation:', error);
+        });
+    }
 }

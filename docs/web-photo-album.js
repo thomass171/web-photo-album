@@ -13,7 +13,7 @@ var gateway = "";
 // No, with suffix. Without suffix moves the case problem to a chapter definition.
 // Not containing thumbnails. Also for thumbnail images contains real file name
 var allImagesMap = new Map();
-var scanResult = {};
+var loadResult = {};
 
 var THUMBNAIL = 0;
 var ALBUM = 1;
@@ -65,15 +65,6 @@ class AlbumElement {
         return document.getElementById(this.detailImageId);
     }
 
-    getHtmlPreviewImage() {
-        if (this.detailImageId != -1) {
-            return document.getElementById(this.detailImageId);
-        }
-        var img = document.getElementById(this.thumbnailImageId);
-        //console.log("getHtmlPreviewImage img=", img)
-        return img;
-    }
-
     getDayGroup() {
         if (isUndefined(this.localDateTime)) {
             return "etc";
@@ -108,13 +99,22 @@ class AlbumElement {
     }
 
     /**
+     * Show preview into a 'scan' or 'album' destination (delegate to callback).
+     * Loads a preview image if no image has been loaded before.
      * if the element has a thumbnail, prefer this. Otherwise load the full image.
      */
-    loadPreview() {
+    showPreview(callback, callbackParameter) {
         var currentAE = this;
-        console.log("loadPreview thumbnailName=",this.thumbnailName);
+        console.log("showPreview thumbnailName=",this.thumbnailName);
         var imageId;
         var fileName;
+        // Check, if an image has already been loaded
+        if (this.thumbnailImageId != -1) {
+            callback(this, this.thumbnailImageId, callbackParameter);
+        }
+        if (this.detailImageId != -1) {
+            callback(this, this.detailImageId, callbackParameter);
+        }
         if (this.thumbnailName != null) {
             this.thumbnailImageId = addImageSlot();
             imageId = this.thumbnailImageId ;
@@ -131,10 +131,10 @@ class AlbumElement {
             currentAE.height = metadata.height;
             currentAE.width = metadata.width;
             currentAE.dimension = metadata.dimension;
-            addScanPreview(currentAE, scanResult.scanned);
-            scanResult.scanned++;
+            callback(currentAE, imageId, callbackParameter);
+            loadResult.loaded++;
             updateScanStatus();
-            });
+        });
     }
 
     /**
@@ -247,18 +247,18 @@ function isImage(filename) {
 }
 
 /**
- * Add scan preview image to the prepared scan grid at the well defined
- * position(index;order of scanning) for this album element.
+ * Add load preview image to the prepared load grid at the well defined
+ * position(index;order of loading) for this album element.
  * Might be a thumbnail or full image.
  */
-function addScanPreview(albumElement, index) {
+function scanPreviewLoaded(albumElement, destinationCellId, imageId/*index*/) {
 
     //var previewDimension = getDimension(albumElement.dimension, THUMBNAIL);
     var previewDimension = albumElement.getThumbnailDimension();
     //console.log("previewDimension for " + albumElement.thumbnailName + "=",previewDimension)
     // Show possibly resized image in preview element
     var dataurl = createDataUrlFromCanvas(previewDimension.width, previewDimension.height, ctx => {
-        ctx.drawImage(albumElement.getHtmlPreviewImage(), 0, 0, previewDimension.width, previewDimension.height);
+        ctx.drawImage(document.getElementById(imageId)/*albumElement.getHtmlPreviewImage()*/, 0, 0, previewDimension.width, previewDimension.height);
         if (isUndefined(albumElement.localDateTime)) {
             ctx.beginPath();
             ctx.moveTo(0, 0);
@@ -267,7 +267,8 @@ function addScanPreview(albumElement, index) {
         }
     });
     var htmlImage = createImage("");
-    $("#previewcell" + index).append(htmlImage.html);
+    //$("#previewcell" + index).append(htmlImage.html);
+    $(destinationCellId).append(htmlImage.html);
     $("#" + htmlImage.id).attr("src", dataurl);
 
     var tooltip = "" + albumElement.fileName + ": "+ albumElement.dimension;
@@ -279,22 +280,27 @@ function addScanPreview(albumElement, index) {
  */
 function addAlbumImage(albumElement, targetCell) {
 
-    var albumDimension = getDimension(albumElement.dimension, ALBUM);
-    //console.log("dimension=",dimension)
-    // Show resized image in preview element
-    var dataurl = createDataUrlFromCanvas(albumDimension.width, albumDimension.height, ctx => {
-        ctx.drawImage(albumElement.getHtmlPreviewImage(), 0, 0, albumDimension.width, albumDimension.height);
-    });
     var htmlImage = createImage("max-width: 100%; height: auto");
     $("#" + targetCell).append(htmlImage.html);
-    $("#" + htmlImage.id).attr("src", dataurl);
-    $("#" + htmlImage.id).click(function() {
-        switchView("fullview");
-        albumElement.updateFullView();
-    });
 
-    var tooltip = "" + albumElement.fileName + ": "+ albumElement.dimension;
-    $("#" + htmlImage.id).attr('title', tooltip);
+    var callbackParameter = {};
+    albumElement.showPreview(function(lae, imageId, para) {
+
+        var albumDimension = getDimension(albumElement.dimension, ALBUM);
+        //console.log("dimension=",dimension)
+        // Show resized image in preview element
+        var dataurl = createDataUrlFromCanvas(albumDimension.width, albumDimension.height, ctx => {
+            ctx.drawImage(document.getElementById(imageId)/*albumElement.getHtmlPreviewImage()*/, 0, 0, albumDimension.width, albumDimension.height);
+        });
+        $("#" + htmlImage.id).attr("src", dataurl);
+        $("#" + htmlImage.id).click(function() {
+            switchView("fullview");
+            albumElement.updateFullView();
+        });
+
+        var tooltip = "" + albumElement.fileName + ": "+ albumElement.dimension;
+        $("#" + htmlImage.id).attr('title', tooltip);
+    }, callbackParameter);
 }
 
 /**
@@ -306,7 +312,7 @@ function addScanFailure(image, index) {
     content += "" + image.error;
     content += "</div>";
 
-    //$("#scanpreview").append(content);
+    //$("#loadpreview").append(content);
     $("#previewcell" + index).append(content);
 
     var tooltip = "" + image.fileName + ": "+ image.dimension;
@@ -317,7 +323,7 @@ function addScanFailure(image, index) {
 /**
  * Add a chapter of an album.
  */
-function addChapter(chapter, imageObjectURL) {
+function addChapter(chapter/*, imageObjectURL*/) {
 
     var chapterid = "chapter_" + getUniqueId() + "_i";
     //console.log("Adding chapter element " + chapter.label + " with id " + chapterid);
@@ -367,8 +373,8 @@ function switchView(view) {
         console.log("latestAlbumViewScrollPos ",latestAlbumViewScrollPos);
     }
 
-    //console.log("switchView to ", view);
-    ['scanview', 'listview', 'albumview', 'fullview'].forEach(v => {
+    //disable all views
+    ['scanview', 'loadview', 'listview', 'albumview', 'fullview'].forEach(v => {
         $('#'+v).removeClass('w3-show');
         $('#'+v).addClass('w3-hide');
     });
@@ -378,14 +384,17 @@ function switchView(view) {
          // return to previous scroll position
          window.scrollBy(0, latestAlbumViewScrollPos);
     }
-    if (view == "scanview") {
-         $('#scanview').removeClass('w3-hide');
-         $('#scanview').addClass('w3-show');
+    if (view == "loadview") {
+         $('#loadview').removeClass('w3-hide');
+         $('#loadview').addClass('w3-show');
     }
     if (view == "fullview") {
-
         $('#fullview').removeClass('w3-hide');
         $('#fullview').addClass('w3-show');
+    }
+    if (view == "scanview") {
+        $('#scanview').removeClass('w3-hide');
+        $('#scanview').addClass('w3-show');
     }
 }
 
@@ -497,7 +506,7 @@ function showAlbumByDefinition(albumDefinition) {
 }
 
 function updateScanStatus() {
-    $("#scanstatus").html("(" + scanResult.scanned +  "/" + scanResult.totalToScan + ", " + scanResult.failed + " failed)");
+    $("#scanstatus").html("(" + loadResult.loaded +  "/" + loadResult.totalToScan + ", " + loadResult.failed + " failed)");
 }
 
 function findThumbnailByBasename(thumbnails, basename) {
@@ -536,59 +545,71 @@ function init() {
     initLoader(host, gateway);
 
     //webdavContent(host)
-    switchView('scanview');
+
     loader.loadDir(function (arrayOfFileNames) {
         //console.log(data);
         console.log("" + arrayOfFileNames.length + " files found");
-        if (arrayOfFileNames.includes(ALBUM_DEFINITION_FILE)) {
+
+        // totalToScan is the total number of files found, not only images
+        loadResult.totalToScan = arrayOfFileNames.length;
+        loadResult.loaded = 0;
+        loadResult.failed = 0;
+
+        // optionally limit the number of files for better performance during development
+        // arrayOfFileNames = arrayOfFileNames.slice(0,12)
+
+        // step1: collect thumbnails
+        var thumbnails = [];
+        console.log("step 1");
+        arrayOfFileNames.forEach(element => {
+            if (isImage(element)) {
+                //console.log("element ", element)
+                var imageName = element;
+                if (FilenameUtils.isThumbnail(imageName)) {
+                    thumbnails.push(imageName);
+                    //imageName = imageName.replace("_small", "");
+                    //console.log("thumbnailName ", thumbnailName)
+                }
+            }
+        });
+        // step 2: build album elements by image names
+        console.log("step 2");
+        arrayOfFileNames.forEach(element => {
+            if (isImage(element)) {
+                //console.log("element ", element)
+                var imageName = element;
+                if (!FilenameUtils.isThumbnail(imageName)) {
+                    var basename = StringUtils.substringBeforeLast(imageName, ".");
+                    var thumbnailName = findThumbnailByBasename(thumbnails, basename);
+                    console.log("Found thumbnail " + thumbnailName + " for " + imageName)
+                    albumElement = new AlbumElement(imageName, thumbnailName);
+                    allImagesMap.set(imageName, albumElement);
+                }
+            } else {
+                console.log("Scan skipped file '"+ element + "' because its no image");
+            }
+        });
+        // step 3: load previews and enter either scan view or album view
+        // build grid like https://www.w3schools.com/w3css/w3css_grid.asp
+        console.log("step3");
+        if (arrayOfFileNames.includes(ALBUM_DEFINITION_FILE) && true) {
+            switchView('albumview');
             console.log("album definition file found");
+            // Load definition and prepare album before loading previews
+            loader.loadText(ALBUM_DEFINITION_FILE, function(content) {
+                console.log("Found",content);
+                showAlbumByDefinition(JSON.parse(content));
+            });
         } else {
-            // totalToScan is the total number of files found, not only images
-            scanResult.totalToScan = arrayOfFileNames.length;
-            scanResult.scanned = 0;
-            scanResult.failed = 0;
-
-            // optionally limit the number of files for better performance during development
-            // arrayOfFileNames = arrayOfFileNames.slice(0,12)
-
-            // step1: collect thumbnails
-            var thumbnails = [];
-            console.log("step 1");
-            arrayOfFileNames.forEach(element => {
-                if (isImage(element)) {
-                    //console.log("element ", element)
-                    var imageName = element;
-                    if (FilenameUtils.isThumbnail(imageName)) {
-                        thumbnails.push(imageName);
-                        //imageName = imageName.replace("_small", "");
-                        //console.log("thumbnailName ", thumbnailName)
-                    }
-                }
-            });
-            // step 2: build album elements by image names
-            console.log("step 2");
-            arrayOfFileNames.forEach(element => {
-                if (isImage(element)) {
-                    //console.log("element ", element)
-                    var imageName = element;
-                    if (!FilenameUtils.isThumbnail(imageName)) {
-                        var basename = StringUtils.substringBeforeLast(imageName, ".");
-                        var thumbnailName = findThumbnailByBasename(thumbnails, basename);
-                        console.log("Found thumbnail " + thumbnailName + " for " + imageName)
-                        albumElement = new AlbumElement(imageName, thumbnailName);
-                        allImagesMap.set(imageName, albumElement);
-                    }
-                } else {
-                    console.log("Scan skipped file '"+ element + "' because its no image");
-                }
-            });
-            // step 3: load previews
-            // build grid like https://www.w3schools.com/w3css/w3css_grid.asp
-            console.log("step3");
+            switchView('scanview');
             var scanGrid = buildW3Grid(allImagesMap.size, 6, "w3-row-padding w3-margin-top", "w3-col m2", "previewcell");
             $("#scanpreview").append(scanGrid.html);
-            allImagesMap.forEach((value, key) => {
-                value.loadPreview();
+            var index = 0;
+            // make index reliable by using callbackParameter to avoid random order of images.
+            allImagesMap.forEach((ae, key) => {
+                 ae.showPreview(function(lae, imageId, para) {
+                    scanPreviewLoaded(lae, "#previewcell" + para.idx, imageId);
+                 },{idx:index++});
             });
         }
     });
