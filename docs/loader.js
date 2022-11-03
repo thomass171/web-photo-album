@@ -59,8 +59,11 @@ function initLoader(host, gateway) {
                console.log("image " + imageName + " loaded");
                var metadata = {};
                EXIF.getData(img, function() {
-
-                   var GPSLatitude = EXIF.getTag(this, "GPSLatitude");
+                   metadata.latlng = buildLatLngFromExif(
+                       EXIF.getTag(this, "GPSLatitude"),
+                       EXIF.getTag(this, "GPSLatitudeRef"),
+                       EXIF.getTag(this, "GPSLongitude"),
+                       EXIF.getTag(this, "GPSLongitudeRef"));
                    var DateTimeOriginal = EXIF.getTag(this, "DateTimeOriginal");
                    //console.log("DateTimeOriginal:", DateTimeOriginal)
                    if (DateTimeOriginal != null) {

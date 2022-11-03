@@ -43,6 +43,8 @@ var dimensions = [
     { width: 768, height: 1024 }]
 ];
 
+var map;
+
 class AlbumElement {
     /**
      * fileName is always the 'real' name, even if a thumbnail exists.
@@ -131,6 +133,7 @@ class AlbumElement {
             currentAE.height = metadata.height;
             currentAE.width = metadata.width;
             currentAE.dimension = metadata.dimension;
+            currentAE.latlng = metadata.latlng;
             callback(currentAE, imageId, callbackParameter);
             loadResult.loaded++;
             updateScanStatus();
@@ -327,7 +330,7 @@ function addChapter(chapter/*, imageObjectURL*/) {
 
     var chapterid = "chapter_" + getUniqueId() + "_i";
     //console.log("Adding chapter element " + chapter.label + " with id " + chapterid);
-    var chapterGrid = buildW3Grid(chapter.images.length, 3, "w3-row-padding w3-margin-top", "w3-col m4", chapterid);
+    var chapterGrid = buildW3Grid(chapter.elements.length, 3, "w3-row-padding w3-margin-top", "w3-col m4", chapterid);
 
     //var imageid = "image_" + getUniqueId();
     var content = "<div class='w3-bar-item'>";
@@ -338,9 +341,14 @@ function addChapter(chapter/*, imageObjectURL*/) {
     addListItem("chapterlist", content, "w3-bar");
 
     var idx = 0;
-    chapter.images.forEach(imageName => {
-        var albumElement = allImagesMap.get(imageName);
+    chapter.elements.forEach(element => {
+        var albumElement = allImagesMap.get(element.photo);
+        // reset latlng might be needed for prepared album definition
+        albumElement.latlng = new L.latLng(element.lat, element.lng);
         addAlbumImage(albumElement, chapterid + idx);
+        if (map != null) {
+            var marker = L.marker(albumElement.latlng).addTo(map);
+        }
         idx++;
     });
 }
@@ -440,18 +448,22 @@ function exitHandlerFullscreen() {
 }  
 
 function buildAlbum() {
-    albumDefinition = buildAlbumDefinitionFromScanResult();
+    var options = {};
+    options.map = $("#optMap").is(":checked");
+    console.log("options", options);
+    albumDefinition = buildAlbumDefinitionFromScanResult(options);
     showAlbumByDefinition(albumDefinition);
 }
 
-function buildAlbumDefinitionFromScanResult() {
+function buildAlbumDefinitionFromScanResult(options) {
     var albumDefinition = {};
-    albumDefinition.chapter = [];
     albumDefinition.title = loader.subdir;
+    albumDefinition.chapter = [];
 
     console.log("Building album for " + allImagesMap.size + " images.")
 
     switchView("albumview");
+    // key is date of photo, value is list of image names
     var imagesPerDayMap = new Map();
     allImagesMap.forEach((value, key) => {
         var date = value.getDayGroup();
@@ -490,15 +502,55 @@ function buildAlbumDefinitionFromScanResult() {
             }
             return at.isBefore(bt) ? -1 : 1;
         });
-        chapter.images = imagesPerDayMap.get(key);
+        chapter.elements = [];
+        imagesPerDayMap.get(key).forEach(v => {
+            var element = {photo:v};
+            var ae = allImagesMap.get(v);
+            if (!isUndefined(ae.latlng)) {
+                element.lat = ae.latlng.lat;
+                element.lng = ae.latlng.lng;
+            }
+            chapter.elements.push(element);
+        });
         //console.log("chapter imgages of "+key+":",chapter.images);
         albumDefinition.chapter.push(chapter);
     });
+
+    if (options.map) {
+        albumDefinition.map = {};
+        var area = { north : -90, east : -90, south : 90, west : 90};
+        allImagesMap.forEach((value, key) => {
+            if (!isUndefined(value.latlng)) {
+                var latlng = value.latlng;
+                if (latlng.lat > area.north) area.north = latlng.lat;
+                if (latlng.lat < area.south) area.south = latlng.lat;
+                if (latlng.lng > area.east) area.east = latlng.lng;
+                if (latlng.lng < area.west) area.west = latlng.lng;
+            }
+        });
+        console.log("area",area);
+        // TODO center calc is too simple
+        area.center = new L.latLng((area.north + area.south) / 2, (area.east + area.west) / 2);
+        console.log("center",area.center);
+        albumDefinition.map.area = area;
+        albumDefinition.map.height = "280px";
+    }
     return albumDefinition;
 }
 
 function showAlbumByDefinition(albumDefinition) {
     $("#album_title").html(albumDefinition.title);
+
+    if (!isUndefined(albumDefinition.map)) {
+        setCss("map", "height", albumDefinition.map.height);
+        var zoom = 13;
+        map = L.map('map').setView(albumDefinition.map.area.center, zoom);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+    }
+
     albumDefinition.chapter.forEach(chapter => {
         addChapter(chapter);
     });

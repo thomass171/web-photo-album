@@ -346,5 +346,37 @@ function date2JsDate(dateString) {
     return result;
 }*/
 
+function buildLatLngFromExif(GPSLatitude, GPSLatitudeRef, GPSLongitude, GPSLongitudeRef) {
 
+    console.log("GPSLatitude",GPSLatitude)
 
+    var latDegree = GPSLatitude[0].numerator;
+    var latMinute = GPSLatitude[1].numerator;
+    var latSecond = GPSLatitude[2].numerator;
+    var latDirection = GPSLatitudeRef;
+    var latFinal = convertDMSToDD(latDegree, latMinute, latSecond, latDirection);
+
+    var lonDegree = GPSLongitude[0].numerator;
+    var lonMinute = GPSLongitude[1].numerator;
+    var lonSecond = GPSLongitude[2].numerator;
+    var lonDirection = GPSLongitudeRef;
+    var lonFinal = convertDMSToDD(lonDegree, lonMinute, lonSecond, lonDirection);
+    var latlng = new L.latLng(latFinal, lonFinal);
+    console.log("latlng",latlng)
+    return latlng;
+}
+
+/**
+ * From https://stackoverflow.com/questions/62380759/trying-to-use-exif-js-to-return-gps-coords-when-a-jpg-image-is-clicked
+ */
+function convertDMSToDD(degrees, minutes, seconds, direction) {
+    var dd = degrees + (minutes/60) + (seconds/360000);
+    if (direction == "S" || direction == "W") {
+        dd = dd * -1;
+    }
+    return dd;
+}
+
+function setCss(id, property, value) {
+    $("#"+id).css(property, value);
+}

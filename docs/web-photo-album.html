@@ -8,7 +8,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.2/dist/leaflet.css" integrity="sha256-sA+zWATbFveLLNqWO2gtiw3HL/lh1giY/Inf1BJ0z14=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.2/dist/leaflet.js" integrity="sha256-o9N1jGDZrf5tS+Ft4gbIK7mYMipq9lqpVJ91xHSyKhg=" crossorigin=""></script>
 </head>
 
 <body class="w3-light-grey">
@@ -38,6 +39,8 @@ w3-container: HTML container with 16px left and right padding (Container Class)
         </div>
         <div>
             <button id="btn_buildAlbum" class=" w3-button w3-round w3-khaki " onclick="buildAlbum()">Build Album</button>
+            <br>
+            Album options: Map <input type="checkbox" id="optMap" checked="checked">
         </div>
 
     </div>
@@ -45,6 +48,8 @@ w3-container: HTML container with 16px left and right padding (Container Class)
     <div id="albumview">
         <div class="w3-container">
             <h1 id="album_title"></h1>
+            <div id="map" class="w3-card-4"></div>
+            <br>
             <button id="btn_startSlideShow" class=" w3-button w3-round w3-khaki " onclick="startSlideShow()">Slideshow</button>
             <ul id="chapterlist" class="w3-ul w3-card-4"></ul>
             <button id="btn_copyAlbumDefinition" class=" w3-button w3-round w3-khaki " onclick="copyAlbumDefinition()">Copy AD</button>
