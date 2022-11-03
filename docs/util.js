@@ -349,6 +349,9 @@ function date2JsDate(dateString) {
 function buildLatLngFromExif(GPSLatitude, GPSLatitudeRef, GPSLongitude, GPSLongitudeRef) {
 
     console.log("GPSLatitude",GPSLatitude)
+    if (!isUndefined(GPSLatitude)) {
+        return null;
+    }
 
     var latDegree = GPSLatitude[0].numerator;
     var latMinute = GPSLatitude[1].numerator;
