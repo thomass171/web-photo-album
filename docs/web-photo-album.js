@@ -344,9 +344,11 @@ function addChapter(chapter/*, imageObjectURL*/) {
     chapter.elements.forEach(element => {
         var albumElement = allImagesMap.get(element.photo);
         // reset latlng might be needed for prepared album definition
-        albumElement.latlng = new L.latLng(element.lat, element.lng);
+        if (!isUndefined(element.lat)) {
+            albumElement.latlng = new L.latLng(element.lat, element.lng);
+        }
         addAlbumImage(albumElement, chapterid + idx);
-        if (map != null) {
+        if (map != null && !isUndefined(albumElement.latlng)) {
             var marker = L.marker(albumElement.latlng).addTo(map);
         }
         idx++;
