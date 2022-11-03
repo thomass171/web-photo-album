@@ -349,7 +349,7 @@ function date2JsDate(dateString) {
 function buildLatLngFromExif(GPSLatitude, GPSLatitudeRef, GPSLongitude, GPSLongitudeRef) {
 
     console.log("GPSLatitude",GPSLatitude)
-    if (!isUndefined(GPSLatitude)) {
+    if (isUndefined(GPSLatitude)) {
         return null;
     }
 
