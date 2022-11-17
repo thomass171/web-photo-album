@@ -279,7 +279,7 @@ function scanPreviewLoaded(albumElement, destinationCellId, imageId/*index*/) {
 }
 
 /**
- * Add an image to an album chapter.
+ * Add an image to a specific grid cell of an album chapter.
  */
 function addAlbumImage(albumElement, targetCell) {
 
@@ -287,13 +287,14 @@ function addAlbumImage(albumElement, targetCell) {
     $("#" + targetCell).append(htmlImage.html);
 
     var callbackParameter = {};
+    // the image might not yet be available. So be prepared for async loading.
     albumElement.showPreview(function(lae, imageId, para) {
 
         var albumDimension = getDimension(albumElement.dimension, ALBUM);
         //console.log("dimension=",dimension)
         // Show resized image in preview element
         var dataurl = createDataUrlFromCanvas(albumDimension.width, albumDimension.height, ctx => {
-            ctx.drawImage(document.getElementById(imageId)/*albumElement.getHtmlPreviewImage()*/, 0, 0, albumDimension.width, albumDimension.height);
+            ctx.drawImage(document.getElementById(imageId), 0, 0, albumDimension.width, albumDimension.height);
         });
         $("#" + htmlImage.id).attr("src", dataurl);
         $("#" + htmlImage.id).click(function() {
@@ -325,34 +326,37 @@ function addScanFailure(image, index) {
 
 /**
  * Add a chapter of an album.
+ * The whole chapter div is just a list item in the list of chapter.
+ * The image grid in only prepared. Images will be added later.
  */
-function addChapter(chapter/*, imageObjectURL*/) {
+function prepareChapter(chapter) {
 
     var chapterid = "chapter_" + getUniqueId() + "_i";
     //console.log("Adding chapter element " + chapter.label + " with id " + chapterid);
+    // Th grid size is independent from favorites flag. So there might be empty cells at the end
     var chapterGrid = buildW3Grid(chapter.elements.length, 3, "w3-row-padding w3-margin-top", "w3-col m4", chapterid);
 
-    //var imageid = "image_" + getUniqueId();
     var content = "<div class='w3-bar-item'>";
-    content += "<span class='w3-large'>" + chapter.label + "</span><br>" +
-        "<span>";
+    content += "<span class='w3-large'>" + chapter.label + "</span><br>" + "<span>";
     content += chapterGrid.html;
     content += "</span><br>" + "</div>";
     addListItem("chapterlist", content, "w3-bar");
 
-    var idx = 0;
+    //var idx = 0;
     chapter.elements.forEach(element => {
         var albumElement = allImagesMap.get(element.photo);
-        // reset latlng might be needed for prepared album definition
+        // reset latlng is needed for prepared album definition, but only for those which really have latlng
         if (!isUndefined(element.lat)) {
             albumElement.latlng = new L.latLng(element.lat, element.lng);
         }
-        addAlbumImage(albumElement, chapterid + idx);
+        albumElement.favorite = element.favorite;
+        //addAlbumImage(albumElement, chapterid + idx);
         if (map != null && !isUndefined(albumElement.latlng)) {
             var marker = L.marker(albumElement.latlng).addTo(map);
         }
-        idx++;
+        //idx++;
     });
+    chapter.chapterid = chapterid;
 }
 
 /**
@@ -554,9 +558,33 @@ function showAlbumByDefinition(albumDefinition) {
     }
 
     albumDefinition.chapter.forEach(chapter => {
-        addChapter(chapter);
+        prepareChapter(chapter);
     });
     currentAlbum = albumDefinition;
+    // finally add the images
+    populateAlbumGrid();
+}
+
+/**
+ * add the album images to the grid.
+ * Might be called repeatedly for example for favorite toggling.
+ */
+function populateAlbumGrid() {
+    console.log("populateAlbumGrid");
+    var withFavorites = $("#optFavorites").is(":checked");
+    currentAlbum.chapter.forEach(chapter => {
+        var idx = 0;
+        chapter.elements.forEach(element => {
+            var albumElement = allImagesMap.get(element.photo);
+            var targetCell = chapter.chapterid + idx;
+            // remove old content from cell
+            $("#" + targetCell).empty();
+            if (!withFavorites || albumElement.favorite) {
+                addAlbumImage(albumElement, targetCell);
+            }
+            idx++;
+        });
+    });
 }
 
 function updateScanStatus() {
@@ -572,6 +600,10 @@ function findThumbnailByBasename(thumbnails, basename) {
         }
     });
     return found;
+}
+
+function optFavoritesChange() {
+    populateAlbumGrid();
 }
 
 /**
