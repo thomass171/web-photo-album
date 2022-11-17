@@ -574,15 +574,21 @@ function populateAlbumGrid() {
     var withFavorites = $("#optFavorites").is(":checked");
     currentAlbum.chapter.forEach(chapter => {
         var idx = 0;
+        // first clear grid
         chapter.elements.forEach(element => {
             var albumElement = allImagesMap.get(element.photo);
             var targetCell = chapter.chapterid + idx;
             // remove old content from cell
             $("#" + targetCell).empty();
-            if (!withFavorites || albumElement.favorite) {
-                addAlbumImage(albumElement, targetCell);
-            }
             idx++;
+        });
+        var idx = 0;
+        chapter.elements.forEach(element => {
+            var albumElement = allImagesMap.get(element.photo);
+            if (!withFavorites || albumElement.favorite) {
+                addAlbumImage(albumElement, targetCell = chapter.chapterid + idx);
+                idx++;
+            }
         });
     });
 }
