@@ -546,6 +546,18 @@ function buildAlbumDefinitionFromScanResult(options) {
     return albumDefinition;
 }
 
+function usesFavorites(albumDefinition) {
+    var uses = false;
+    albumDefinition.chapter.forEach(chapter => {
+        chapter.elements.forEach(element => {
+            if (!isUndefined(element.favorite)) {
+                uses = true;
+            }
+        });
+    });
+    return uses;
+}
+
 /**
  * Heads up: albumdefinition does not contain AlbumElements. These exist already
  * and some attributes like lat,lng,favorite need to be copied from albumdefinition to AlbumElement
@@ -555,14 +567,7 @@ function showAlbumByDefinition(albumDefinition) {
     $("#album_title").html(albumDefinition.title);
 
     // If favorites are used, show only favorites per default. Otherwise show all.
-    $("#optFavorites").prop("checked", false);
-    albumDefinition.chapter.forEach(chapter => {
-        chapter.elements.forEach(element => {
-            if (!isUndefined(element.favorite)) {
-                $("#optFavorites").prop("checked", true);
-            }
-        });
-    });
+    $("#optFavorites").prop("checked", usesFavorites(albumDefinition));
 
     if (!isUndefined(albumDefinition.map)) {
         setCss("map", "height", albumDefinition.map.height);
@@ -706,7 +711,7 @@ function init() {
             console.log("album definition file found");
             // Load definition and prepare album before loading previews
             loader.loadText(ALBUM_DEFINITION_FILE, function(content) {
-                console.log("Found",content);
+                //console.log("Found",content);
                 showAlbumByDefinition(JSON.parse(content));
             });
         } else {
