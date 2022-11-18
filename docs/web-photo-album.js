@@ -349,7 +349,9 @@ function prepareChapter(chapter) {
         if (!isUndefined(element.lat)) {
             albumElement.latlng = new L.latLng(element.lat, element.lng);
         }
-        albumElement.favorite = element.favorite;
+        if (!isUndefined(element.favorite)) {
+            albumElement.favorite = element.favorite;
+        }
         //addAlbumImage(albumElement, chapterid + idx);
         if (map != null && !isUndefined(albumElement.latlng)) {
             var marker = L.marker(albumElement.latlng).addTo(map);
