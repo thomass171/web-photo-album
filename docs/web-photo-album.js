@@ -544,8 +544,23 @@ function buildAlbumDefinitionFromScanResult(options) {
     return albumDefinition;
 }
 
+/**
+ * Heads up: albumdefinition does not contain AlbumElements. These exist already
+ * and some attributes like lat,lng,favorite need to be copied from albumdefinition to AlbumElement
+ * in the following.
+ */
 function showAlbumByDefinition(albumDefinition) {
     $("#album_title").html(albumDefinition.title);
+
+    // If favorites are used, show only favorites per default. Otherwise show all.
+    $("#x").prop("optFavorites", false);
+    albumDefinition.chapter.forEach(chapter => {
+        chapter.elements.forEach(element => {
+            if (!isUndefined(element.favorite)) {
+                $("#x").prop("optFavorites", true);
+            }
+        });
+    });
 
     if (!isUndefined(albumDefinition.map)) {
         setCss("map", "height", albumDefinition.map.height);
