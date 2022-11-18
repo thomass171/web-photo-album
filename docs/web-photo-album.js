@@ -553,11 +553,11 @@ function showAlbumByDefinition(albumDefinition) {
     $("#album_title").html(albumDefinition.title);
 
     // If favorites are used, show only favorites per default. Otherwise show all.
-    $("#x").prop("optFavorites", false);
+    $("#optFavorites").prop("checked", false);
     albumDefinition.chapter.forEach(chapter => {
         chapter.elements.forEach(element => {
             if (!isUndefined(element.favorite)) {
-                $("#x").prop("optFavorites", true);
+                $("#optFavorites").prop("checked", true);
             }
         });
     });
