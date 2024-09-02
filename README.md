@@ -1,11 +1,10 @@
 # web-photo-album
+August 2024: This project is deprecated meanwhile because the latest nextcloud
+photo app releases added features like a map. The show case server is no longer
+running.
+
 A simple photo album based on simple HTML/JS/CSS intended for use with Nextcloud via webdav.
 No build is needed.
-
-See https://thomass171.github.io/web-photo-album/web-photo-album.html?host=https://211115qegtix53nqmrw.nextcloud.hosting.zone/public.php/webdav&user=gyBzJm5qs9wYEpZ&gateway=https://ubuntu-server.udehlavj1efjeuqv.myfritz.net
-for an working example. 
-This example uses a free Nextcloud instance at hosting.de and a narrow bandwidth example of
-a webdav gateway.
 
 Since webdav server commonly do not set CORS header unfortunately,
 a gateway server like https://github.com/thomass171/webdav-gateway is required.
